@@ -1,15 +1,23 @@
 package com.lloir.ornatowerstimer;
 
+import android.Manifest;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.content.Context;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.view.View;
-import android.widget.*;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
+import androidx.core.content.ContextCompat;
+import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.EditText;
+import android.widget.Spinner;
 import android.widget.TextView;
 
 import java.util.ArrayList;
@@ -28,7 +36,6 @@ public class MainActivity extends AppCompatActivity {
     private EditText floorInputEditText;
     private TextView floorsTextView;
     private Spinner towerSpinner;
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -100,6 +107,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showNotification() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_NOTIFICATION_POLICY) != PackageManager.PERMISSION_GRANTED) {
+            // Permission not granted, handle the case
+            // You can request the permission from the user here
+            // For example, you can show a dialog or request the permission using a permission request flow
+            return;
+        }
+
         NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle("Tower Reached " + FLOORS_RESET_VALUE + " Floors")
@@ -111,14 +125,16 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void createNotificationChannel() {
-        String name = "Floors Channel";
-        String descriptionText = "Notification channel for floors";
-        int importance = NotificationManager.IMPORTANCE_DEFAULT;
-        NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
-        channel.setDescription(descriptionText);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            String name = "Floors Channel";
+            String descriptionText = "Notification channel for floors";
+            int importance = NotificationManager.IMPORTANCE_DEFAULT;
+            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
+            channel.setDescription(descriptionText);
 
-        NotificationManager notificationManager = getSystemService(NotificationManager.class);
-        notificationManager.createNotificationChannel(channel);
+            NotificationManager notificationManager = getSystemService(NotificationManager.class);
+            notificationManager.createNotificationChannel(channel);
+        }
     }
 
     private void updateFloorsTextView() {
@@ -136,10 +152,16 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int INITIAL_FLOORS = 15;
     private static final int FLOORS_RESET_VALUE = 50;
-    private static final long FLOORS_UPDATE_INTERVAL = 5 * 60 * 60 * 1000L; // 5 hours in milliseconds
+    private static final long FLOORS_UPDATE_INTERVAL = 5 * 1000L; // 5 seconds in milliseconds
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        handler.removeCallbacks(floorsUpdateRunnable);
+    }
 
     private static class Tower {
-        private final int currentFloor;
+        private int currentFloor;
 
         public Tower(int currentFloor) {
             this.currentFloor = currentFloor;
