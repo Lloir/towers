@@ -3,172 +3,198 @@ package com.lloir.ornatowerstimer;
 import android.Manifest;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
+import android.view.MenuItem;
+import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.Spinner;
+import android.widget.TextView;
+
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
+import androidx.preference.PreferenceFragmentCompat;
 import androidx.core.content.ContextCompat;
-import android.view.View;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
-import android.widget.EditText;
-import android.widget.Spinner;
-import android.widget.TextView;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Calendar;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final String CHANNEL_ID = "floors_channel";
-    private static final int NOTIFICATION_ID = 1;
-    private static final int MAX_TOWERS = 10;
-    private Handler handler;
-    private Runnable floorsUpdateRunnable;
-    private List<Tower> towers;
-    private int floors;
-
-    private EditText floorInputEditText;
-    private TextView floorsTextView;
     private Spinner towerSpinner;
+    private TextView currentFloorTextView;
+    private TextView hitTimeTextView;
+
+    // Tower offsets
+    private static final int SEL_ELE_OFFSET = 34;
+    private static final int EOS_OFFSET = 29;
+    private static final int OCE_OFFSET = 24;
+    private static final int THE_OFFSET = 19;
+    private static final int PRO_OFFSET = 14;
+
+    // Notification channel constants
+    private static final String CHANNEL_ID = "tower_notifications";
+    private static final String CHANNEL_NAME = "Tower Notifications";
+    private static final int NOTIFICATION_ID = 1;
+
+    // Permission request code
+    private static final int PERMISSION_REQUEST_CODE = 1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        createNotificationChannel();
-
-        handler = new Handler(Looper.getMainLooper());
-        floorsUpdateRunnable = this::updateFloors;
-        towers = new ArrayList<>();
-
-        floorInputEditText = findViewById(R.id.floorInputEditText);
-        floorsTextView = findViewById(R.id.floorsTextView);
         towerSpinner = findViewById(R.id.towerSpinner);
+        currentFloorTextView = findViewById(R.id.currentFloorTextView);
+        hitTimeTextView = findViewById(R.id.hitTimeTextView);
 
-        findViewById(R.id.calculateButton).setOnClickListener(v -> {
-            String inputFloorText = floorInputEditText.getText().toString();
-            int inputFloor = Integer.parseInt(inputFloorText);
-            Tower tower = new Tower(inputFloor);
-            if (towers.size() >= MAX_TOWERS) {
-                towers.remove(0); // Remove the oldest tower
-            }
-            towers.add(tower);
-            updateFloorsTextView();
-        });
+        ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(this,
+                R.array.tower_names, android.R.layout.simple_spinner_item);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        towerSpinner.setAdapter(adapter);
 
-        findViewById(R.id.removeButton).setOnClickListener(v -> {
-            int selectedTowerIndex = towerSpinner.getSelectedItemPosition();
-            if (selectedTowerIndex >= 0 && selectedTowerIndex < towers.size()) {
-                towers.remove(selectedTowerIndex);
-                updateFloorsTextView();
-            }
-        });
-
-        populateTowerSpinner();
         towerSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                int selectedTowerIndex = towerSpinner.getSelectedItemPosition();
-                if (selectedTowerIndex >= 0 && selectedTowerIndex < towers.size()) {
-                    floors = towers.get(selectedTowerIndex).getCurrentFloor();
-                    updateFloorsTextView();
-                }
+                calculateCurrentFloorAndHitTime(position);
             }
 
             @Override
             public void onNothingSelected(AdapterView<?> parent) {
+                // Do nothing
             }
         });
 
-        startFloorsUpdateTimer();
+        Button settingsButton = findViewById(R.id.settingsButton);
+        settingsButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                openSettings();
+            }
+        });
     }
 
-    private void startFloorsUpdateTimer() {
-        handler.postDelayed(floorsUpdateRunnable, FLOORS_UPDATE_INTERVAL);
-    }
+    private void calculateCurrentFloorAndHitTime(int position) {
+        int offset = 0;
 
-    private void updateFloors() {
-        floors++;
-        if (floors >= FLOORS_RESET_VALUE) {
-            floors = INITIAL_FLOORS;
-            showNotification();
+        switch (position) {
+            case 0: // Oceanus
+                offset = OCE_OFFSET;
+                break;
+            case 1: // Selene
+                offset = SEL_ELE_OFFSET;
+                break;
+            case 2: // Eos
+                offset = EOS_OFFSET;
+                break;
+            case 3: // Themis
+                offset = THE_OFFSET;
+                break;
+            case 4: // Prometheus
+                offset = PRO_OFFSET;
+                break;
         }
 
-        updateFloorsTextView();
+        int currentFloor = getCurrentFloor(offset);
+        String hitTime = calculateHitTime(currentFloor);
 
-        startFloorsUpdateTimer();
+        currentFloorTextView.setText("Current Floor: " + currentFloor);
+        hitTimeTextView.setText("Estimated Time of Arrival at Floor 50: " + hitTime);
+
+        if (currentFloor == 50) {
+            showNotification();
+        }
+    }
+
+    private int getCurrentFloor(int offset) {
+        Calendar calendar = Calendar.getInstance();
+        int hour = calendar.get(Calendar.HOUR_OF_DAY);
+        int currentFloor = ((hour - 19) / 5) + 15 + offset;
+
+        if (currentFloor > 50) {
+            currentFloor = 15 + offset;
+        }
+
+        return currentFloor;
+    }
+
+    private String calculateHitTime(int currentFloor) {
+        int remainingFloors = 50 - currentFloor;
+        int remainingHours = remainingFloors * 5;
+        int remainingDays = remainingHours / 24;
+        remainingHours = remainingHours % 24;
+
+        return remainingDays + "d " + remainingHours + "h";
+    }
+
+    private void openSettings() {
+        Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
+        startActivity(intent);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        if (item.getItemId() == android.R.id.home) {
+            onBackPressed();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     private void showNotification() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_NOTIFICATION_POLICY) != PackageManager.PERMISSION_GRANTED) {
-            // Permission not granted, handle the case
-            // You can request the permission from the user here
-            // For example, you can show a dialog or request the permission using a permission request flow
-            return;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // Check if the permission is granted
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_NOTIFICATION_POLICY)
+                    != PackageManager.PERMISSION_GRANTED) {
+                // Permission is not granted, request it
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.ACCESS_NOTIFICATION_POLICY},
+                        PERMISSION_REQUEST_CODE);
+                return;
+            }
         }
 
-        NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle("Tower Reached " + FLOORS_RESET_VALUE + " Floors")
-                .setContentText("The tower has reached " + FLOORS_RESET_VALUE + " floors. Resetting to " + INITIAL_FLOORS + " floors.")
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT);
+        // Permission is granted, proceed with showing the notification
 
-        NotificationManagerCompat notificationManager = NotificationManagerCompat.from(this);
-        notificationManager.notify(NOTIFICATION_ID, notificationBuilder.build());
-    }
-
-    private void createNotificationChannel() {
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            String name = "Floors Channel";
-            String descriptionText = "Notification channel for floors";
-            int importance = NotificationManager.IMPORTANCE_DEFAULT;
-            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
-            channel.setDescription(descriptionText);
-
+        // Create the notification channel (required for Android 8.0 and above)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            CharSequence channelName = CHANNEL_NAME;
+            String channelId = CHANNEL_ID;
+            NotificationChannel channel = new NotificationChannel(channelId, channelName, NotificationManager.IMPORTANCE_DEFAULT);
             NotificationManager notificationManager = getSystemService(NotificationManager.class);
             notificationManager.createNotificationChannel(channel);
         }
+
+        // Build the notification
+        String notificationTitle = getString(R.string.notification_title);
+        String notificationText = getString(R.string.notification_text);
+        Intent intent = new Intent(this, MainActivity.class);
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setContentTitle(notificationTitle)
+                .setContentText(notificationText)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentIntent(pendingIntent)
+                .setAutoCancel(true);
+
+        // Show the notification
+        NotificationManagerCompat notificationManagerCompat = NotificationManagerCompat.from(this);
+        notificationManagerCompat.notify(NOTIFICATION_ID, builder.build());
     }
 
-    private void updateFloorsTextView() {
-        floorsTextView.setText(String.valueOf(floors));
-    }
-
-    private void populateTowerSpinner() {
-        List<String> towerNames = new ArrayList<>();
-        for (int i = 0; i < towers.size(); i++) {
-            towerNames.add("Tower " + (i + 1));
-        }
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, towerNames);
-        towerSpinner.setAdapter(adapter);
-    }
-
-    private static final int INITIAL_FLOORS = 15;
-    private static final int FLOORS_RESET_VALUE = 50;
-    private static final long FLOORS_UPDATE_INTERVAL = 5 * 1000L; // 5 seconds in milliseconds
-
-    @Override
-    protected void onStop() {
-        super.onStop();
-        handler.removeCallbacks(floorsUpdateRunnable);
-    }
-
-    private static class Tower {
-        private int currentFloor;
-
-        public Tower(int currentFloor) {
-            this.currentFloor = currentFloor;
-        }
-
-        public int getCurrentFloor() {
-            return currentFloor;
+    public static class SettingsFragment extends PreferenceFragmentCompat {
+        @Override
+        public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
+            setPreferencesFromResource(R.xml.preferences, rootKey);
         }
     }
 }

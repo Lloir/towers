@@ -4,7 +4,21 @@ plugins {
 }
 
 android {
+    compileSdkVersion 34
 
+    packagingOptions {
+        exclude("META-INF/kotlin-stdlib-common.kotlin_module")
+        exclude("META-INF/kotlin-stdlib-jdk7.kotlin_module")
+        exclude("META-INF/kotlin-stdlib-jdk8.kotlin_module")
+        exclude("META-INF/kotlin-stdlib.kotlin_module")
+        exclude("kotlin/annotation/annotation.kotlin_builtins")
+        exclude("kotlin/collections/collections.kotlin_builtins")
+        exclude("kotlin/coroutines/coroutines.kotlin_builtins")
+        exclude("kotlin/internal/internal.kotlin_builtins")
+        exclude("kotlin/kotlin.kotlin_builtins")
+        exclude("kotlin/ranges/ranges.kotlin_builtins")
+        exclude("kotlin/reflect/reflect.kotlin_builtins")
+    }
     defaultConfig {
         applicationId "com.lloir.ornatowerstimer"
         minSdkVersion 26
@@ -31,7 +45,6 @@ android {
         viewBinding true
     }
 
-    // Add the namespace configuration
     namespace 'com.lloir.ornatowerstimer'
 }
 
@@ -41,14 +54,9 @@ dependencies {
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'androidx.navigation:navigation-fragment:2.6.0'
     implementation 'androidx.navigation:navigation-ui:2.6.0'
-
-
-    // Kotlin dependencies
-    implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.8.21'
-    implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.21'
-    implementation 'org.jetbrains.kotlin.android:org.jetbrains.kotlin.android.gradle.plugin:1.8.22'
-
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+    implementation 'androidx.preference:preference-ktx:1.1.1'
+
 }
