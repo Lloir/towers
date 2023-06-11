@@ -1,6 +1,7 @@
 package com.lloir.ornatowerstimer;
 
 import android.Manifest;
+import android.app.AlertDialog;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -9,6 +10,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
@@ -23,7 +25,6 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.preference.PreferenceFragmentCompat;
-import androidx.core.content.ContextCompat;
 
 import java.util.Calendar;
 
@@ -46,7 +47,7 @@ public class MainActivity extends AppCompatActivity {
     private static final int NOTIFICATION_ID = 1;
 
     // Permission request code
-    private static final int PERMISSION_REQUEST_CODE = 1;
+    private static final int NOTIFICATION_POLICY_REQUEST_CODE = 1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -81,6 +82,8 @@ public class MainActivity extends AppCompatActivity {
                 openSettings();
             }
         });
+
+        requestNotificationPermission();
     }
 
     private void calculateCurrentFloorAndHitTime(int position) {
@@ -151,20 +154,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showNotification() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            // Check if the permission is granted
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_NOTIFICATION_POLICY)
-                    != PackageManager.PERMISSION_GRANTED) {
-                // Permission is not granted, request it
-                ActivityCompat.requestPermissions(this,
-                        new String[]{Manifest.permission.ACCESS_NOTIFICATION_POLICY},
-                        PERMISSION_REQUEST_CODE);
-                return;
-            }
-        }
-
-        // Permission is granted, proceed with showing the notification
-
         // Create the notification channel (required for Android 8.0 and above)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             CharSequence channelName = CHANNEL_NAME;
@@ -187,14 +176,62 @@ public class MainActivity extends AppCompatActivity {
                 .setAutoCancel(true);
 
         // Show the notification
-        NotificationManagerCompat notificationManagerCompat = NotificationManagerCompat.from(this);
-        notificationManagerCompat.notify(NOTIFICATION_ID, builder.build());
+        if (hasNotificationPermission()) {
+            NotificationManagerCompat notificationManagerCompat = NotificationManagerCompat.from(this);
+            try {
+                notificationManagerCompat.notify(NOTIFICATION_ID, builder.build());
+            } catch (SecurityException e) {
+                // Handle the SecurityException here
+            }
+        } else {
+            requestNotificationPermission();
+        }
     }
 
     public static class SettingsFragment extends PreferenceFragmentCompat {
         @Override
         public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
             setPreferencesFromResource(R.xml.preferences, rootKey);
+        }
+    }
+
+    private void requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationManager notificationManager = getSystemService(NotificationManager.class);
+            if (!notificationManager.isNotificationPolicyAccessGranted()) {
+                new AlertDialog.Builder(this)
+                        .setTitle("Notification Permission")
+                        .setMessage("Please grant permission to show notifications.")
+                        .setPositiveButton("Grant", (dialog, which) -> {
+                            Intent intent = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS);
+                            intent.putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName());
+                            startActivity(intent);
+                        })
+                        .setNegativeButton("Cancel", (dialog, which) -> {
+                            // Handle cancellation
+                        })
+                        .show();
+            }
+        }
+    }
+
+    private boolean hasNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationManager notificationManager = getSystemService(NotificationManager.class);
+            return notificationManager.isNotificationPolicyAccessGranted();
+        }
+        return true; // If SDK version is below Oreo, assume permission is granted
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == NOTIFICATION_POLICY_REQUEST_CODE) {
+            if (hasNotificationPermission()) {
+                // Notification policy access granted
+            } else {
+                // Notification policy access denied
+            }
         }
     }
 }
