@@ -1,0 +1,41 @@
+# Orna Towers Timer
+
+Orna Towers Timer is an Android application that helps players of the mobile game Orna track their progress in climbing towers. It calculates the current floor and estimated time of arrival at floor 50 based on the selected tower and current time.
+
+## Features
+
+- Select from different towers: Oceanus, Selene, Eos, Themis, and Prometheus
+- Calculates the current floor and estimated time of arrival at floor 50
+- Displays the results in real-time
+- Shows a notification when the player reaches floor 50
+
+## Usage
+
+1. Select the tower from the dropdown menu.
+2. The app will calculate and display the current floor and estimated time of arrival at floor 50.
+3. If the current floor is 50, a notification will be shown.
+
+## Permissions
+
+The app requires the following permission:
+
+- `ACCESS_NOTIFICATION_POLICY`: Used to show a notification when the player reaches floor 50.
+
+## Compatibility
+
+- Android: API level 19 (Android 4.4 KitKat) and above
+
+## Build and Run
+
+1. Clone the repository.
+2. Open the project in Android Studio.
+3. Build and run the app on an Android device or emulator.
+
+## Contributing
+
+Contributions are welcome! If you find any issues or have suggestions for improvements, please open an issue or submit a pull request.
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
+
