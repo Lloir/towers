@@ -1,0 +1,88 @@
+package com.example.towers;
+
+import android.content.Context;
+import android.graphics.Color;
+import android.graphics.PixelFormat;
+import android.os.Build;
+import android.os.Bundle;
+import android.view.Gravity;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.WindowManager;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+
+public class MainActivity extends Activity {
+
+    // The overlay view.
+    private View overlayView;
+
+    // The text views for the towers.
+    private TextView selTowerTextView;
+    private TextView theTowerTextView;
+    private TextView eosTowerTextView;
+    private TextView oceTowerTextView;
+    private TextView proTowerTextView;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        // Create the overlay view.
+        overlayView = LayoutInflater.from(this).inflate(R.layout.activity_overlay, null);
+
+        // Get the text views for the towers.
+        selTowerTextView = overlayView.findViewById(R.id.sel_tower_text_view);
+        theTowerTextView = overlayView.findViewById(R.id.the_tower_text_view);
+        eosTowerTextView = overlayView.findViewById(R.id.eos_tower_text_view);
+        oceTowerTextView = overlayView.findViewById(R.id.oce_tower_text_view);
+        proTowerTextView = overlayView.findViewById(R.id.pro_tower_text_view);
+
+        // Update the text views with the current floors of the towers.
+        int selTowerFloor = getCurrentFloor(2, 3);
+        int theTowerFloor = getCurrentFloor(3, 4);
+        int eosTowerFloor = getCurrentFloor(4, 5);
+        int oceTowerFloor = getCurrentFloor(5, 6);
+        int proTowerFloor = getCurrentFloor(6, 7);
+
+        // Update the text views with the current floors.
+        selTowerTextView.setText(String.valueOf(selTowerFloor));
+        theTowerTextView.setText(String.valueOf(theTowerFloor));
+        eosTowerTextView.setText(String.valueOf(eosTowerFloor));
+        oceTowerTextView.setText(String.valueOf(oceTowerFloor));
+        proTowerTextView.setText(String.valueOf(proTowerFloor));
+
+        // Add the overlay view to the window.
+        WindowManager.LayoutParams params = new WindowManager.LayoutParams(
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.TYPE_SYSTEM_OVERLAY,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                PixelFormat.TRANSLUCENT);
+        params.gravity = Gravity.TOP | Gravity.LEFT;
+        WindowManager windowManager = getWindowManager();
+        windowManager.addView(overlayView, params);
+    }
+
+    private int getCurrentFloor(int lastIncreased, int nextIncrease) {
+        // Get the current time.
+        long currentTime = System.currentTimeMillis();
+
+        // Calculate the time since the tower last increased.
+        long timeSinceIncreased = currentTime - lastIncreased;
+
+        // Calculate the number of floors that have increased.
+        int floorsIncreased = (int) (timeSinceIncreased / (5 * 60 * 1000));
+
+        // Calculate the current floor.
+        int currentFloor = floorsIncreased + 1;
+
+        // Check if the current floor is greater than the next increase.
+        if (currentFloor > nextIncrease) {
+            currentFloor = 1;
+        }
+
+        return currentFloor;
+    }
+}
